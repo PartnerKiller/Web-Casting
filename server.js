@@ -10,6 +10,15 @@ const Client = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 const { spawn } = require('child_process');
 
+// Make the server crash-proof against unstable castv2-client exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Captured Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Captured Unhandled Rejection:', reason);
+});
+
 const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(express.json());
