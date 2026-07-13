@@ -339,67 +339,79 @@ function stopProgressTicker() {
   }
 }
 
-// Local File Upload Ajax Logic
-function uploadFile(file) {
+// Local Files Sequential Batch Upload Logic
+async function uploadFiles(files) {
+  if (files.length === 0) return;
+  
   uploadProgressContainer.classList.remove('hidden');
-  uploadStatusText.textContent = `Uploading "${file.name}"...`;
   
-  const formData = new FormData();
-  formData.append('mediaFile', file);
-  formData.append('title', file.name.replace(/\.[^/.]+$/, "")); // Strip file extension for display title
-  
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/upload', true);
-  
-  // Track upload progress
-  xhr.upload.onprogress = (e) => {
-    if (e.lengthComputable) {
-      const percentComplete = Math.round((e.loaded / e.total) * 100);
-      uploadProgressFill.style.width = `${percentComplete}%`;
-      uploadProgressPercent.textContent = `${percentComplete}%`;
-    }
-  };
-  
-  xhr.onload = async () => {
-    if (xhr.status === 200) {
-      try {
-        const responseData = JSON.parse(xhr.responseText);
-        uploadStatusText.textContent = 'Upload complete! Adding to queue...';
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    uploadStatusText.textContent = `Uploading file ${i + 1} of ${files.length}: "${file.name}"...`;
+    
+    try {
+      await new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('mediaFile', file);
+        formData.append('title', file.name.replace(/\.[^/.]+$/, ""));
         
-        // Auto-add the uploaded file to playlist queue
-        const addResponse = await fetch('/api/playlist/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            url: responseData.file.url,
-            title: responseData.file.title,
-            contentType: responseData.file.contentType
-          })
-        });
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/upload', true);
         
-        if (addResponse.ok) {
-          setTimeout(() => {
-            uploadProgressContainer.classList.add('hidden');
-            uploadProgressFill.style.width = '0%';
-          }, 1500);
-        } else {
-          alert('Failed to add uploaded file to playlist.');
-        }
-      } catch (err) {
-        console.error('Upload JSON parsing failed:', err);
-      }
-    } else {
-      alert(`Upload failed: ${xhr.statusText}`);
-      uploadProgressContainer.classList.add('hidden');
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            uploadProgressFill.style.width = `${percentComplete}%`;
+            uploadProgressPercent.textContent = `${percentComplete}%`;
+          }
+        };
+        
+        xhr.onload = async () => {
+          if (xhr.status === 200) {
+            try {
+              const responseData = JSON.parse(xhr.responseText);
+              
+              // Auto-add the uploaded file to playlist queue
+              const addResponse = await fetch('/api/playlist/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  url: responseData.file.url,
+                  title: responseData.file.title,
+                  contentType: responseData.file.contentType
+                })
+              });
+              
+              if (addResponse.ok) {
+                resolve();
+              } else {
+                reject(new Error('Failed to add playlist item'));
+              }
+            } catch (err) {
+              reject(err);
+            }
+          } else {
+            reject(new Error(`Upload failed: ${xhr.statusText}`));
+          }
+        };
+        
+        xhr.onerror = () => {
+          reject(new Error('Network error'));
+        };
+        
+        xhr.send(formData);
+      });
+    } catch (err) {
+      console.error('File upload failed:', file.name, err);
+      alert(`Failed to upload "${file.name}": ${err.message || 'Network error'}`);
     }
-  };
+  }
   
-  xhr.onerror = () => {
-    alert('Network error occurred during file upload.');
+  uploadStatusText.textContent = 'All uploads complete!';
+  setTimeout(() => {
     uploadProgressContainer.classList.add('hidden');
-  };
-  
-  xhr.send(formData);
+    uploadProgressFill.style.width = '0%';
+  }, 1500);
 }
 
 // REST API Request Wrappers
@@ -484,7 +496,7 @@ uploadZone.addEventListener('drop', (e) => {
   
   const files = e.dataTransfer.files;
   if (files.length > 0) {
-    uploadFile(files[0]);
+    uploadFiles(files);
   }
 });
 
@@ -496,7 +508,7 @@ uploadZone.addEventListener('click', () => {
 fileInput.addEventListener('change', (e) => {
   const files = e.target.files;
   if (files.length > 0) {
-    uploadFile(files[0]);
+    uploadFiles(files);
   }
 });
 
