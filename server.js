@@ -146,10 +146,14 @@ wss.on('connection', (ws, req) => {
       }
       
       console.log(`Re-casting active stream on TV reconnect: ${activeTrack.title} starting at ${resumeTime.toFixed(1)}s`);
+      let tvMediaUrl = activeTrack.url;
+      if (activeTrack.url.includes(LOCAL_IP)) {
+        tvMediaUrl = activeTrack.url.replace(LOCAL_IP, 'localhost');
+      }
       try {
         ws.send(JSON.stringify({
           type: 'LOAD',
-          url: activeTrack.url,
+          url: tvMediaUrl,
           title: activeTrack.title,
           contentType: activeTrack.contentType,
           poster: activeTrack.poster,
@@ -477,10 +481,17 @@ function castMediaItem(mediaUrl, contentType, title, poster, callback = null) {
   if (isTvConnected && tvSocket) {
     pendingCasts++;
     console.log(`Sending LOAD command to TV Receiver: ${title}`);
+    
+    // Replace local network IP with localhost for local TV Web Receiver to bypass router/firewall loopback blocks
+    let tvMediaUrl = mediaUrl;
+    if (mediaUrl.includes(LOCAL_IP)) {
+      tvMediaUrl = mediaUrl.replace(LOCAL_IP, 'localhost');
+    }
+    
     try {
       tvSocket.send(JSON.stringify({
         type: 'LOAD',
-        url: mediaUrl,
+        url: tvMediaUrl,
         title: title || 'Local Stream',
         contentType: contentType || 'video/mp4',
         poster: poster || ''
