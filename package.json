@@ -1,0 +1,15 @@
+{
+  "name": "jio-cast-remote",
+  "version": "1.0.0",
+  "description": "Local Castv2 remote control dashboard for Jio STB",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "castv2-client": "^1.2.0",
+    "ws": "^8.16.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}

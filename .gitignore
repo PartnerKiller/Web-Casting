@@ -1,0 +1,8 @@
+node_modules/
+public/uploads/*
+!public/uploads/.gitkeep
+.agents/
+.gemini/
+*.log
+.DS_Store
+Thumbs.db
