@@ -52,6 +52,34 @@ let currentMediaController = null;
 let isConnected = false;
 let reconnectTimer = null;
 let lastKnownProgressTime = 0;
+let jioPollInterval = null;
+
+function startJioPolling() {
+  if (jioPollInterval) return;
+  console.log('Starting JioSTB Castv2 status polling interval...');
+  jioPollInterval = setInterval(() => {
+    if (isConnected && currentMediaController) {
+      currentMediaController.getStatus((err, status) => {
+        if (!err && status) {
+          jioPlayerStatus = status;
+          if (status && typeof status.currentTime === 'number') {
+            lastKnownProgressTime = status.currentTime;
+            syncTvToJio();
+          }
+          broadcastStatus();
+        }
+      });
+    }
+  }, 2000);
+}
+
+function stopJioPolling() {
+  if (jioPollInterval) {
+    console.log('Stopping JioSTB Castv2 status polling interval.');
+    clearInterval(jioPollInterval);
+    jioPollInterval = null;
+  }
+}
 
 // Playlist Queue State
 let playlist = [];
@@ -190,6 +218,21 @@ let lastTvSyncTime = 0;
 
 function syncTvToJio() {
   if (!isTvConnected || !tvSocket || !jioPlayerStatus || !tvPlayerStatus) return;
+  
+  // Mirror Play/Pause states
+  if (jioPlayerStatus.playerState === 'PAUSED' && tvPlayerStatus.playerState === 'PLAYING') {
+    console.log('Mirroring JioSTB PAUSE to TV Web Receiver...');
+    try {
+      tvSocket.send(JSON.stringify({ type: 'PAUSE' }));
+    } catch(e) {}
+  } else if (jioPlayerStatus.playerState === 'PLAYING' && tvPlayerStatus.playerState === 'PAUSED') {
+    console.log('Mirroring JioSTB PLAY to TV Web Receiver...');
+    try {
+      tvSocket.send(JSON.stringify({ type: 'PLAY' }));
+    } catch(e) {}
+  }
+  
+  // Mirror current time seek positions
   if (typeof jioPlayerStatus.currentTime !== 'number' || typeof tvPlayerStatus.currentTime !== 'number') return;
   
   const now = Date.now();
@@ -258,6 +301,7 @@ function connectToSTB() {
     jioPlayerStatus = null;
     currentReceiverStatus = null;
     currentMediaController = null;
+    stopJioPolling();
     broadcastStatus();
     scheduleReconnect();
   });
@@ -270,6 +314,7 @@ function connectToSTB() {
     if (!app || app.appId !== 'CC1AD845') {
       jioPlayerStatus = null;
       currentMediaController = null;
+      stopJioPolling();
     } else if (app && app.appId === 'CC1AD845' && !currentMediaController) {
       joinActiveSession(app);
     }
@@ -287,6 +332,8 @@ function connectToSTB() {
         const app = status?.applications?.[0];
         if (app && app.appId === 'CC1AD845') {
           joinActiveSession(app);
+        } else {
+          stopJioPolling();
         }
       }
       broadcastStatus();
@@ -323,6 +370,11 @@ function joinActiveSession(appDetails) {
         lastKnownProgressTime = status.currentTime;
         syncTvToJio();
       }
+      if (status.playerState === 'PLAYING') {
+        startJioPolling();
+      } else {
+        stopJioPolling();
+      }
       if (status.playerState === 'IDLE' && status.idleReason === 'FINISHED') {
         console.log('Media finished playing. Advancing queue...');
         playNextTrack();
@@ -336,6 +388,11 @@ function joinActiveSession(appDetails) {
         if (status && typeof status.currentTime === 'number') {
           lastKnownProgressTime = status.currentTime;
           syncTvToJio();
+        }
+        if (status.playerState === 'PLAYING') {
+          startJioPolling();
+        } else {
+          stopJioPolling();
         }
         broadcastStatus();
       }
@@ -706,6 +763,7 @@ app.post('/api/control', (req, res) => {
       });
       commandExecuted = true;
     } else if (action === 'off') {
+      stopJioPolling();
       client.getStatus((err, status) => {
         const activeApp = status?.applications?.[0];
         if (activeApp) {
@@ -741,6 +799,7 @@ app.post('/api/control', (req, res) => {
           commandExecuted = true;
           break;
         case 'stop':
+          stopJioPolling();
           currentMediaController.stop((err, status) => {
             currentMediaController = null;
             jioPlayerStatus = null;
