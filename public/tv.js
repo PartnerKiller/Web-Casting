@@ -439,7 +439,8 @@ function attemptPlay() {
       sendVolumeUpdate();
     }).catch(e => {
       console.error('Muted playback also failed:', e);
-      reportError('Browser blocked playback');
+      const reason = e.message || e.name || 'Unknown play error';
+      reportError(`Playback error: ${reason}`);
     });
   });
 }
