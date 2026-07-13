@@ -206,8 +206,10 @@ function handleTvMessage(data) {
       break;
       
     case 'ENDED':
-      console.log('TV Media ended playing. Advancing queue...');
-      playNextTrack();
+      if (currentPlayingIndex !== -1) {
+        console.log('TV Media ended playing. Advancing queue...');
+        playNextTrack();
+      }
       break;
       
     default:
@@ -375,7 +377,7 @@ function joinActiveSession(appDetails) {
       } else {
         stopJioPolling();
       }
-      if (status.playerState === 'IDLE' && status.idleReason === 'FINISHED') {
+      if (status.playerState === 'IDLE' && status.idleReason === 'FINISHED' && currentPlayingIndex !== -1) {
         console.log('Media finished playing. Advancing queue...');
         playNextTrack();
       }
