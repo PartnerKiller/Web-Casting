@@ -370,7 +370,15 @@ function attachEventListeners(player) {
   });
   
   player.addEventListener('error', (e) => {
-    const errorDetails = player.error ? `Code ${player.error.code}: ${player.error.message}` : 'Unknown HTML5 media error';
+    let errorDetails = player.error ? `Code ${player.error.code}: ${player.error.message}` : 'Unknown HTML5 media error';
+    
+    if (player.error && player.error.code === 4) {
+      const urlLower = (currentMedia && currentMedia.url) ? currentMedia.url.toLowerCase() : '';
+      if (urlLower.includes('.mkv') || urlLower.includes('.avi')) {
+        errorDetails = 'MKV/AVI container not supported by web browsers. Cast to physical JioSTB target instead!';
+      }
+    }
+    
     console.error('Player error occurred:', errorDetails, e);
     reportError(`Playback error: ${errorDetails}`);
   });
