@@ -64,7 +64,9 @@ function handleCommand(cmd) {
   }
   
   if (cmd.type === 'OFF') {
-    stopMedia();
+    if (activePlayer) {
+      activePlayer.pause();
+    }
     splashScreen.classList.add('hidden');
     let powerOverlay = document.getElementById('power-overlay');
     if (!powerOverlay) {
@@ -100,7 +102,13 @@ function handleCommand(cmd) {
     if (powerOverlay) {
       powerOverlay.style.display = 'none';
     }
-    splashScreen.classList.remove('hidden');
+    if (currentMedia) {
+      if (activePlayer && activePlayer.paused) {
+        activePlayer.play().catch(err => console.warn(err));
+      }
+    } else {
+      splashScreen.classList.remove('hidden');
+    }
     sendState();
     return;
   }

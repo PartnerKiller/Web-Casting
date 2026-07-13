@@ -764,15 +764,16 @@ app.post('/api/control', (req, res) => {
       commandExecuted = true;
     } else if (action === 'off') {
       stopJioPolling();
+      // Optimistic state updates for instant response times
+      currentMediaController = null;
+      jioPlayerStatus = null;
+      lastKnownProgressTime = 0;
+      broadcastStatus();
+      
       client.getStatus((err, status) => {
         const activeApp = status?.applications?.[0];
         if (activeApp) {
-          client.stop(activeApp, (err) => {
-            currentMediaController = null;
-            jioPlayerStatus = null;
-            lastKnownProgressTime = 0;
-            broadcastStatus();
-          });
+          client.stop(activeApp, (err) => {});
         }
       });
       commandExecuted = true;
@@ -791,22 +792,30 @@ app.post('/api/control', (req, res) => {
     } else if (currentMediaController) {
       switch (action) {
         case 'play':
+          if (jioPlayerStatus) jioPlayerStatus.playerState = 'PLAYING';
+          broadcastStatus();
           currentMediaController.play((err, status) => {});
           commandExecuted = true;
           break;
         case 'pause':
+          if (jioPlayerStatus) jioPlayerStatus.playerState = 'PAUSED';
+          broadcastStatus();
           currentMediaController.pause((err, status) => {});
           commandExecuted = true;
           break;
         case 'stop':
           stopJioPolling();
-          currentMediaController.stop((err, status) => {
-            currentMediaController = null;
-            jioPlayerStatus = null;
-            lastKnownProgressTime = 0;
-            currentPlayingIndex = -1;
-            broadcastStatus();
-          });
+          const targetController = currentMediaController;
+          // Optimistic state updates for instant response times
+          currentMediaController = null;
+          jioPlayerStatus = null;
+          lastKnownProgressTime = 0;
+          currentPlayingIndex = -1;
+          broadcastStatus();
+          
+          if (targetController) {
+            targetController.stop((err, status) => {});
+          }
           commandExecuted = true;
           break;
         case 'seek':

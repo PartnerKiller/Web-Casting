@@ -514,11 +514,15 @@ btnClearQueue.addEventListener('click', () => {
 
 // Event Bindings
 btnPlayPause.addEventListener('click', () => {
+  btnPlayPause.style.transform = 'scale(0.9)';
+  setTimeout(() => btnPlayPause.style.transform = '', 120);
   const action = isPlaying ? 'pause' : 'play';
   sendCommand(action);
 });
 
 btnStop.addEventListener('click', () => {
+  btnStop.style.transform = 'scale(0.9)';
+  setTimeout(() => btnStop.style.transform = '', 120);
   sendCommand('stop');
 });
 
@@ -716,10 +720,14 @@ btnRestartServer.addEventListener('click', async () => {
 
 // Power buttons click event binding
 btnPowerOn.addEventListener('click', () => {
+  btnPowerOn.style.transform = 'scale(0.85)';
+  setTimeout(() => btnPowerOn.style.transform = '', 120);
   sendCommand('on');
 });
 
 btnPowerOff.addEventListener('click', () => {
+  btnPowerOff.style.transform = 'scale(0.85)';
+  setTimeout(() => btnPowerOff.style.transform = '', 120);
   sendCommand('off');
 });
 
