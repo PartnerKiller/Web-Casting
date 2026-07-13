@@ -472,13 +472,23 @@ function hideMuteOverlay() {
   unmuteToast.classList.remove('visible');
 }
 
-// Tap anywhere on screen to unmute if video is playing muted
+// Tap anywhere on screen to unmute or resume if blocked by autoplay policy
 document.addEventListener('click', () => {
-  if (activePlayer && activePlayer.muted) {
-    activePlayer.muted = false;
-    currentMuted = false;
-    hideMuteOverlay();
-    sendVolumeUpdate();
+  if (activePlayer) {
+    if (activePlayer.muted) {
+      activePlayer.muted = false;
+      currentMuted = false;
+      hideMuteOverlay();
+      sendVolumeUpdate();
+    }
+    if (activePlayer.paused) {
+      activePlayer.play()
+        .then(() => {
+          console.log('Playback resumed via user click.');
+          hideMuteOverlay();
+        })
+        .catch(err => console.warn('Play on click failed:', err));
+    }
   }
 });
 
