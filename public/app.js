@@ -94,7 +94,7 @@ function updateUI(state) {
   // Connection status
   if (state.connected) {
     statusDot.className = 'status-dot online';
-    statusLabel.textContent = 'Online';
+    statusLabel.textContent = `Online (${state.deviceIp})`;
     btnPowerOn.disabled = false;
     btnPowerOff.disabled = false;
   } else {

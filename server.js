@@ -437,6 +437,7 @@ function playNextTrack() {
 // Cast implementation (bridges between TV WebSocket or JioSTB Castv2)
 function castMediaItem(mediaUrl, contentType, title, poster, callback = null) {
   lastKnownProgressTime = 0;
+  isTvStandby = false;
   let castSuccess = false;
   let castError = null;
   let pendingCasts = 0;
