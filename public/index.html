@@ -211,16 +211,42 @@
               <input type="url" id="media-poster" placeholder="https://example.com/poster.jpg">
             </div>
 
-            <button type="submit" class="btn btn-submit" id="btn-cast-submit">
-              <span>Cast</span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="cast-btn-icon">
-                <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path>
-                <line x1="2" y1="20" x2="2.01" y2="20"></line>
-              </svg>
-            </button>
+            <div class="form-actions-row">
+              <button type="submit" class="btn btn-submit" id="btn-cast-submit">
+                <span>Cast</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="cast-btn-icon">
+                  <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path>
+                  <line x1="2" y1="20" x2="2.01" y2="20"></line>
+                </svg>
+              </button>
+              <button type="button" class="btn btn-preview" id="btn-preview-submit">
+                <span>Preview</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
           </form>
       </div>
     </main>
+  </div>
+
+  <!-- Media Preview Lightbox Modal -->
+  <div id="preview-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="preview-modal-title">Stream Preview</h3>
+        <button id="btn-close-preview" class="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="preview-player-container">
+          <video id="preview-video-player" controls crossorigin="anonymous" playsinline></video>
+          <audio id="preview-audio-player" controls crossorigin="anonymous" class="hidden"></audio>
+          <div id="preview-error-msg" class="preview-error-msg hidden"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

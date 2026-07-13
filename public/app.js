@@ -258,12 +258,20 @@ function renderPlaylist(playlistItems, currentIndex) {
     }
     
     itemEl.innerHTML = `
-      <button class="btn-playlist-play" data-index="${index}" title="Play Track">
-        ${playIconSvg}
-      </button>
-      <div class="playlist-item-details">
-        <div class="playlist-title">${item.title}</div>
-        <div class="playlist-subtitle">${item.contentType}</div>
+      <div class="playlist-item-left-block">
+        <button class="btn-playlist-play" data-index="${index}" title="Play Track">
+          ${playIconSvg}
+        </button>
+        <button class="btn-playlist-preview" data-index="${index}" title="Preview Track">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+        <div class="playlist-item-details">
+          <div class="playlist-title">${item.title}</div>
+          <div class="playlist-subtitle">${item.contentType}</div>
+        </div>
       </div>
       <button class="btn-playlist-remove" data-id="${item.id}" title="Remove Track">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -281,6 +289,10 @@ function renderPlaylist(playlistItems, currentIndex) {
       } else {
         playPlaylistItem(index);
       }
+    });
+    
+    itemEl.querySelector('.btn-playlist-preview').addEventListener('click', () => {
+      openPreviewModal(item.url, item.title, item.contentType);
     });
     
     itemEl.querySelector('.btn-playlist-remove').addEventListener('click', () => {
@@ -730,6 +742,92 @@ btnPowerOff.addEventListener('click', () => {
   setTimeout(() => btnPowerOff.style.transform = '', 120);
   sendCommand('off');
 });
+
+// Stream Preview Modal Logic
+const previewModal = document.getElementById('preview-modal');
+const previewVideoPlayer = document.getElementById('preview-video-player');
+const previewAudioPlayer = document.getElementById('preview-audio-player');
+const previewModalTitle = document.getElementById('preview-modal-title');
+const btnClosePreview = document.getElementById('btn-close-preview');
+const previewErrorMsg = document.getElementById('preview-error-msg');
+const btnPreviewSubmit = document.getElementById('btn-preview-submit');
+
+function openPreviewModal(url, title, contentType) {
+  previewModalTitle.textContent = `Preview: ${title}`;
+  previewErrorMsg.classList.add('hidden');
+  previewErrorMsg.textContent = '';
+  
+  const isAudio = contentType && contentType.startsWith('audio/');
+  const activePreviewPlayer = isAudio ? previewAudioPlayer : previewVideoPlayer;
+  
+  if (isAudio) {
+    previewAudioPlayer.classList.remove('hidden');
+    previewVideoPlayer.classList.add('hidden');
+    previewVideoPlayer.src = '';
+  } else {
+    previewVideoPlayer.classList.remove('hidden');
+    previewAudioPlayer.classList.add('hidden');
+    previewAudioPlayer.src = '';
+  }
+  
+  // Replace network IP with localhost if it is local to prevent preflight blocks locally on dashboard
+  let previewUrl = url;
+  if (lastKnownState && lastKnownState.localIp && url.includes(lastKnownState.localIp)) {
+    previewUrl = url.replace(lastKnownState.localIp, 'localhost');
+  }
+  
+  activePreviewPlayer.src = previewUrl;
+  activePreviewPlayer.load();
+  
+  activePreviewPlayer.play().catch(err => {
+    console.log('Autoplay in preview blocked, waiting for click:', err);
+  });
+  
+  previewModal.classList.remove('hidden');
+}
+
+function closePreviewModal() {
+  previewVideoPlayer.pause();
+  previewVideoPlayer.src = '';
+  previewAudioPlayer.pause();
+  previewAudioPlayer.src = '';
+  previewModal.classList.add('hidden');
+}
+
+if (btnClosePreview) btnClosePreview.addEventListener('click', closePreviewModal);
+if (previewModal) {
+  previewModal.addEventListener('click', (e) => {
+    if (e.target === previewModal) {
+      closePreviewModal();
+    }
+  });
+}
+
+// Setup local error handlers for preview players
+[previewVideoPlayer, previewAudioPlayer].forEach(player => {
+  if (player) {
+    player.addEventListener('error', () => {
+      const errorDetails = player.error ? `Error Code ${player.error.code}: ${player.error.message}` : 'Unplayable media format or network error';
+      previewErrorMsg.textContent = `Failed to load preview. ${errorDetails}`;
+      previewErrorMsg.classList.remove('hidden');
+    });
+  }
+});
+
+if (btnPreviewSubmit) {
+  btnPreviewSubmit.addEventListener('click', () => {
+    const mediaUrl = mediaUrlInput.value.trim();
+    const title = mediaTitleInput.value.trim() || 'Custom Media Stream';
+    const contentType = mediaTypeSelect.value;
+    
+    if (!mediaUrl) {
+      alert('Please enter a Media Stream URL to preview.');
+      return;
+    }
+    
+    openPreviewModal(mediaUrl, title, contentType);
+  });
+}
 
 // Initialize WebSocket Status Feed Connection on page load
 window.addEventListener('load', () => {
