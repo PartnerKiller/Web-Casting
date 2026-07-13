@@ -168,6 +168,37 @@ function loadMedia(data) {
   
   activePlayer = isAudio ? audioPlayer : videoPlayer;
   
+  let pendingStartTime = parseFloat(data.startTime) || 0;
+  
+  const seekToStart = () => {
+    if (pendingStartTime > 0 && activePlayer) {
+      console.log(`Seeking player to pending start time: ${pendingStartTime}s`);
+      try {
+        activePlayer.currentTime = pendingStartTime;
+        pendingStartTime = 0; // reset to prevent double seeking
+      } catch (e) {
+        console.warn('Seek on metadata load failed, will retry on play:', e);
+      }
+    }
+  };
+  
+  // Register listeners on metadata and playback start to ensure seek succeeds
+  if (activePlayer.readyState >= 1) {
+    seekToStart();
+  } else {
+    const onMetadataLoaded = () => {
+      seekToStart();
+      activePlayer.removeEventListener('loadedmetadata', onMetadataLoaded);
+    };
+    activePlayer.addEventListener('loadedmetadata', onMetadataLoaded);
+  }
+  
+  const onPlaying = () => {
+    seekToStart();
+    activePlayer.removeEventListener('playing', onPlaying);
+  };
+  activePlayer.addEventListener('playing', onPlaying);
+  
   // Show active player, hide inactive one
   if (isAudio) {
     audioPlayer.classList.remove('hidden');

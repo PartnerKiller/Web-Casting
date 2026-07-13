@@ -92,20 +92,31 @@ wss.on('connection', (ws, req) => {
     // Auto-resume active stream if mid-stream reload occurred
     if (currentPlayingIndex >= 0 && currentPlayingIndex < playlist.length) {
       const activeTrack = playlist[currentPlayingIndex];
-      console.log(`Re-casting active stream on TV reconnect: ${activeTrack.title} at ${lastKnownProgressTime}s`);
+      
+      // Determine the target resume timestamp (prefer Set-Top Box's current playing time)
+      let resumeTime = 0;
+      if (jioPlayerStatus && typeof jioPlayerStatus.currentTime === 'number') {
+        resumeTime = jioPlayerStatus.currentTime;
+      } else if (lastKnownProgressTime > 0) {
+        resumeTime = lastKnownProgressTime;
+      }
+      
+      console.log(`Re-casting active stream on TV reconnect: ${activeTrack.title} starting at ${resumeTime.toFixed(1)}s`);
       try {
         ws.send(JSON.stringify({
           type: 'LOAD',
           url: activeTrack.url,
           title: activeTrack.title,
           contentType: activeTrack.contentType,
-          poster: activeTrack.poster
+          poster: activeTrack.poster,
+          startTime: resumeTime
         }));
         
-        if (lastKnownProgressTime > 2) {
+        // Backup seek in case player metadata loader needs a nudge
+        if (resumeTime > 2) {
           setTimeout(() => {
             try {
-              ws.send(JSON.stringify({ type: 'SEEK', value: lastKnownProgressTime }));
+              ws.send(JSON.stringify({ type: 'SEEK', value: resumeTime }));
             } catch (e) {
               console.error('Failed to send auto-resume seek:', e);
             }
