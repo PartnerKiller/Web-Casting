@@ -77,6 +77,7 @@ let lastKnownProgressTime = 0;
 let jioPollInterval = null;
 let isTvStandby = false;
 let lastTransitionTime = 0;
+let sseClients = [];
 
 function startJioPolling() {
   if (jioPollInterval) return;
@@ -290,10 +291,19 @@ function syncTvToJio() {
 function broadcastStatus() {
   const state = getCurrentState();
   const message = JSON.stringify(state);
+  
+  // Broadcast to WS clients (if any fallback)
   wss.clients.forEach((clientWs) => {
     if (clientWs.role === 'dashboard' && clientWs.readyState === WebSocket.OPEN) {
       clientWs.send(message);
     }
+  });
+  
+  // Broadcast to SSE clients (dashboard)
+  sseClients.forEach((res) => {
+    try {
+      res.write(`data: ${message}\n\n`);
+    } catch(e) {}
   });
 }
 
@@ -632,6 +642,26 @@ app.post('/api/restart', (req, res) => {
     child.unref();
     process.exit(0);
   }, 500);
+});
+
+// Server-Sent Events Status Stream for Real-Time Dashboard Updates
+app.get('/api/status-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders();
+  
+  // Push initial status payload immediately
+  const initialState = JSON.stringify(getCurrentState());
+  res.write(`data: ${initialState}\n\n`);
+  
+  // Add to active clients pool
+  sseClients.push(res);
+  
+  req.on('close', () => {
+    sseClients = sseClients.filter(client => client !== res);
+  });
 });
 
 // Playlist Endpoints

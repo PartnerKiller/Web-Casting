@@ -1,5 +1,6 @@
 // WebSocket state feed connection
 let socket = null;
+let eventSource = null;
 let lastKnownState = null;
 let progressInterval = null;
 let currentProgressSeconds = 0;
@@ -55,19 +56,18 @@ const uploadStatusText = document.getElementById('upload-status-text');
 const playlistQueue = document.getElementById('playlist-queue');
 const btnClearQueue = document.getElementById('btn-clear-queue');
 
-// Connect to WebSocket Server for Real-Time Status Updates
-function connectWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/?role=dashboard`;
+// Connect to Server-Sent Events (SSE) Stream for Real-Time Status Updates
+function connectSSE() {
+  const sseUrl = '/api/status-stream';
+  console.log(`Connecting to status stream at ${sseUrl}...`);
   
-  console.log(`Connecting to status feed at ${wsUrl}...`);
-  socket = new WebSocket(wsUrl);
+  eventSource = new EventSource(sseUrl);
   
-  socket.onopen = () => {
-    console.log('Connected to local dashboard server feed.');
+  eventSource.onopen = () => {
+    console.log('Connected to local dashboard status stream.');
   };
   
-  socket.onmessage = (event) => {
+  eventSource.onmessage = (event) => {
     try {
       const state = JSON.parse(event.data);
       updateUI(state);
@@ -76,14 +76,9 @@ function connectWebSocket() {
     }
   };
   
-  socket.onclose = () => {
-    console.warn('Dashboard server feed connection closed. Reconnecting in 3s...');
+  eventSource.onerror = (err) => {
+    console.error('SSE connection error. Reconnecting...', err);
     updateOfflineState();
-    setTimeout(connectWebSocket, 3000);
-  };
-  
-  socket.onerror = (err) => {
-    console.error('WebSocket Error:', err);
   };
 }
 
@@ -731,7 +726,7 @@ btnPowerOff.addEventListener('click', () => {
   sendCommand('off');
 });
 
-// Initialize WebSocket Status Feed Connection on page load
+// Initialize SSE Status Stream Connection on page load
 window.addEventListener('load', () => {
-  connectWebSocket();
+  connectSSE();
 });
