@@ -53,6 +53,8 @@ let isConnected = false;
 let reconnectTimer = null;
 let lastKnownProgressTime = 0;
 let jioPollInterval = null;
+let isTvStandby = false;
+let lastTransitionTime = 0;
 
 function startJioPolling() {
   if (jioPollInterval) return;
@@ -116,6 +118,7 @@ wss.on('connection', (ws, req) => {
     console.log('TV Receiver client connected.');
     isTvConnected = true;
     tvSocket = ws;
+    isTvStandby = false;
     
     // Auto-resume active stream if mid-stream reload occurred
     if (currentPlayingIndex >= 0 && currentPlayingIndex < playlist.length) {
@@ -219,6 +222,7 @@ function handleTvMessage(data) {
 let lastTvSyncTime = 0;
 
 function syncTvToJio() {
+  if (isTvStandby) return;
   if (!isTvConnected || !tvSocket || !jioPlayerStatus || !tvPlayerStatus) return;
   
   // Mirror Play/Pause states
@@ -404,7 +408,14 @@ function joinActiveSession(appDetails) {
 
 // Play next track in playlist queue
 function playNextTrack() {
+  const now = Date.now();
+  if (now - lastTransitionTime < 3500) {
+    console.log('Ignoring duplicate track advance request (cooldown active).');
+    return;
+  }
+  
   if (currentPlayingIndex + 1 < playlist.length) {
+    lastTransitionTime = now;
     currentPlayingIndex++;
     lastKnownProgressTime = 0;
     const nextTrack = playlist[currentPlayingIndex];
@@ -548,6 +559,7 @@ app.post('/api/config/ip', (req, res) => {
   
   // Clean up and restart connection
   isConnected = false;
+  stopJioPolling();
   if (client) {
     try { client.close(); } catch(e){}
     client = null;
@@ -742,11 +754,15 @@ app.post('/api/control', (req, res) => {
       if (action === 'stop' || action === 'off') {
         tvPlayerStatus = null;
         lastKnownProgressTime = 0;
+        if (action === 'off') {
+          isTvStandby = true;
+        }
       }
       if (action === 'seek') {
         lastKnownProgressTime = parseFloat(value);
       }
       if (action === 'on') {
+        isTvStandby = false;
         lastTvSyncTime = 0; // force immediate sync check
         setTimeout(() => {
           syncTvToJio();
