@@ -228,6 +228,10 @@ function handleTvMessage(data) {
       }
       break;
       
+    case 'ERROR':
+      console.error('TV Client reported error:', data.message);
+      break;
+      
     default:
       console.warn('Unknown TV message type:', data.type);
   }
@@ -852,7 +856,7 @@ app.post('/api/control', (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Dashboard web server listening on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Dashboard web server listening on http://localhost:${PORT} (bound to 0.0.0.0)`);
   connectToSTB();
 });

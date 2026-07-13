@@ -370,7 +370,9 @@ function attachEventListeners(player) {
   });
   
   player.addEventListener('error', (e) => {
-    console.error('Player error occurred:', e);
+    const errorDetails = player.error ? `Code ${player.error.code}: ${player.error.message}` : 'Unknown HTML5 media error';
+    console.error('Player error occurred:', errorDetails, e);
+    reportError(`Playback error: ${errorDetails}`);
   });
 }
 
