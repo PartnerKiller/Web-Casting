@@ -104,7 +104,7 @@ function handleCommand(cmd) {
     }
     if (currentMedia) {
       if (activePlayer && activePlayer.paused) {
-        activePlayer.play().catch(err => console.warn(err));
+        attemptPlay();
       }
     } else {
       splashScreen.classList.remove('hidden');
@@ -140,7 +140,7 @@ function handleCommand(cmd) {
   
   switch (cmd.type) {
     case 'PLAY':
-      activePlayer.play().catch(err => console.warn(err));
+      attemptPlay();
       break;
     case 'PAUSE':
       activePlayer.pause();
