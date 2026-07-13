@@ -705,7 +705,23 @@ app.post('/api/playlist/remove', (req, res) => {
     return res.status(404).json({ error: 'Item not found in playlist' });
   }
   
-  console.log(`Removing playlist item [Index ${index}]: ${playlist[index].title}`);
+  const item = playlist[index];
+  console.log(`Removing playlist item [Index ${index}]: ${item.title}`);
+  
+  // Automatically delete local uploaded files from the upload folder
+  if (item.url && item.url.includes('/uploads/')) {
+    const filename = item.url.substring(item.url.lastIndexOf('/') + 1);
+    const filePath = path.join(uploadDir, filename);
+    if (fs.existsSync(filePath)) {
+      console.log(`Deleting local uploaded file from disk: ${filePath}`);
+      try {
+        fs.unlinkSync(filePath);
+      } catch (e) {
+        console.error(`Failed to delete local uploaded file: ${e.message}`);
+      }
+    }
+  }
+  
   playlist.splice(index, 1);
   
   if (index === currentPlayingIndex) {
@@ -758,6 +774,22 @@ app.post('/api/playlist/play-index', (req, res) => {
 });
 
 app.post('/api/playlist/clear', (req, res) => {
+  // Automatically delete all local uploaded files from the upload folder before clearing
+  playlist.forEach(item => {
+    if (item.url && item.url.includes('/uploads/')) {
+      const filename = item.url.substring(item.url.lastIndexOf('/') + 1);
+      const filePath = path.join(uploadDir, filename);
+      if (fs.existsSync(filePath)) {
+        console.log(`Deleting local uploaded file on clear: ${filePath}`);
+        try {
+          fs.unlinkSync(filePath);
+        } catch (e) {
+          console.error(`Failed to delete file on clear: ${e.message}`);
+        }
+      }
+    }
+  });
+
   playlist = [];
   currentPlayingIndex = -1;
   console.log('Playlist queue cleared.');
