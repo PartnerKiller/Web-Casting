@@ -746,6 +746,12 @@ app.post('/api/control', (req, res) => {
       if (action === 'seek') {
         lastKnownProgressTime = parseFloat(value);
       }
+      if (action === 'on') {
+        lastTvSyncTime = 0; // force immediate sync check
+        setTimeout(() => {
+          syncTvToJio();
+        }, 1000);
+      }
       commandExecuted = true;
     } catch (e) {
       console.error('Failed to forward command to TV socket:', e);
@@ -754,32 +760,7 @@ app.post('/api/control', (req, res) => {
   
   // Forward to JioSTB if connected
   if (isConnected && client) {
-    if (action === 'on') {
-      client.launch(DefaultMediaReceiver, (err, player) => {
-        if (!err) {
-          currentMediaController = player;
-          jioPlayerStatus = null;
-          lastKnownProgressTime = 0;
-          broadcastStatus();
-        }
-      });
-      commandExecuted = true;
-    } else if (action === 'off') {
-      stopJioPolling();
-      // Optimistic state updates for instant response times
-      currentMediaController = null;
-      jioPlayerStatus = null;
-      lastKnownProgressTime = 0;
-      broadcastStatus();
-      
-      client.getStatus((err, status) => {
-        const activeApp = status?.applications?.[0];
-        if (activeApp) {
-          client.stop(activeApp, (err) => {});
-        }
-      });
-      commandExecuted = true;
-    } else if (action === 'volume') {
+    if (action === 'volume') {
       const val = parseFloat(value);
       if (!isNaN(val) && val >= 0 && val <= 1) {
         client.setVolume({ level: val }, (err, vol) => {});
