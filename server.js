@@ -797,12 +797,20 @@ app.post('/api/playlist/clear', (req, res) => {
   if (isTvConnected && tvSocket) {
     tvSocket.send(JSON.stringify({ type: 'STOP' }));
   } else if (currentMediaController) {
-    currentMediaController.stop(() => {
+    try {
+      currentMediaController.stop(() => {
+        currentMediaController = null;
+        tvPlayerStatus = null;
+        jioPlayerStatus = null;
+        broadcastStatus();
+      });
+    } catch (e) {
+      console.warn('Failed to stop media controller gracefully on clear:', e.message);
       currentMediaController = null;
       tvPlayerStatus = null;
       jioPlayerStatus = null;
       broadcastStatus();
-    });
+    }
   } else {
     broadcastStatus();
   }
@@ -889,42 +897,51 @@ app.post('/api/control', (req, res) => {
       client.setVolume({ muted: false }, (err, vol) => {});
       commandExecuted = true;
     } else if (currentMediaController) {
-      switch (action) {
-        case 'play':
-          if (jioPlayerStatus) jioPlayerStatus.playerState = 'PLAYING';
-          broadcastStatus();
-          currentMediaController.play((err, status) => {});
-          commandExecuted = true;
-          break;
-        case 'pause':
-          if (jioPlayerStatus) jioPlayerStatus.playerState = 'PAUSED';
-          broadcastStatus();
-          currentMediaController.pause((err, status) => {});
-          commandExecuted = true;
-          break;
-        case 'stop':
-          stopJioPolling();
-          const targetController = currentMediaController;
-          // Optimistic state updates for instant response times
-          currentMediaController = null;
-          jioPlayerStatus = null;
-          lastKnownProgressTime = 0;
-          currentPlayingIndex = -1;
-          broadcastStatus();
-          
-          if (targetController) {
-            targetController.stop((err, status) => {});
-          }
-          commandExecuted = true;
-          break;
-        case 'seek':
-          const time = parseFloat(value);
-          if (!isNaN(time)) {
-            lastKnownProgressTime = time;
-            currentMediaController.seek(time, (err, status) => {});
+      try {
+        switch (action) {
+          case 'play':
+            if (jioPlayerStatus) jioPlayerStatus.playerState = 'PLAYING';
+            broadcastStatus();
+            currentMediaController.play((err, status) => {});
             commandExecuted = true;
-          }
-          break;
+            break;
+          case 'pause':
+            if (jioPlayerStatus) jioPlayerStatus.playerState = 'PAUSED';
+            broadcastStatus();
+            currentMediaController.pause((err, status) => {});
+            commandExecuted = true;
+            break;
+          case 'stop':
+            stopJioPolling();
+            const targetController = currentMediaController;
+            // Optimistic state updates for instant response times
+            currentMediaController = null;
+            jioPlayerStatus = null;
+            lastKnownProgressTime = 0;
+            currentPlayingIndex = -1;
+            broadcastStatus();
+            
+            if (targetController) {
+              try {
+                targetController.stop((err, status) => {});
+              } catch (errStop) {
+                console.warn('Target stop failed:', errStop.message);
+              }
+            }
+            commandExecuted = true;
+            break;
+          case 'seek':
+            const time = parseFloat(value);
+            if (!isNaN(time)) {
+              lastKnownProgressTime = time;
+              currentMediaController.seek(time, (err, status) => {});
+              commandExecuted = true;
+            }
+            break;
+        }
+      } catch (errController) {
+        console.warn('Failed executing media controller action:', action, errController.message);
+        commandExecuted = false;
       }
     }
   }
